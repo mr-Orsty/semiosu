@@ -79,7 +79,10 @@ def reset_game():
     last_switch_time = time.time()
     start_time = 0
 
-# Main Loop
+# Новый флаг для отслеживания завершения игры
+isGameOver = False
+
+# Обновление главного цикла
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -120,26 +123,10 @@ while running:
                     isSettingsOpen = False
                     isMenuOpen = True
 
-                if volume_slider_rect.collidepoint(event.pos):
-                    is_dragging = True
-                    slider_pos = max(0, min(200, event.pos[0] - volume_slider_rect.x))
-                    music_volume = slider_pos / 200
-                    pygame.mixer.music.set_volume(music_volume)
-
-            elif volume_slider_rect.collidepoint(event.pos):
-                if is_dragging:
-                    slider_pos = max(0, min(200, event.pos[0] - volume_slider_rect.x))
-                    music_volume = slider_pos / 200
-                    pygame.mixer.music.set_volume(music_volume)
-
-        elif event.type == pygame.MOUSEBUTTONUP:
-            is_dragging = False
-
-        elif event.type == pygame.MOUSEMOTION:
-            if is_dragging:
-                slider_pos = max(0, min(200, event.pos[0] - volume_slider_rect.x))
-                music_volume = slider_pos / 200
-                pygame.mixer.music.set_volume(music_volume)
+            elif isGameOver:  # Возврат в меню после завершения игры
+                if menu_button_rect.collidepoint(event.pos):
+                    isGameOver = False
+                    isMenuOpen = True
 
     screen.fill("purple")
 
@@ -156,7 +143,7 @@ while running:
         exit_text = font.render("Quit", True, "black")
         screen.blit(exit_text, (278, 331))
 
-    elif isDifficultyOpen:  # Difficulty buttons for Easy, Medium, Hard
+    elif isDifficultyOpen:
         pygame.draw.rect(screen, "yellow", easy_button_rect)
         easy_text = font.render("Easy", True, "black")
         screen.blit(easy_text, (278, 211))
@@ -208,7 +195,7 @@ while running:
 
         for rect in rects:
             rect_x = rect["center"][0] - rect["size"][0] // 2
-            rect_y = rect["center"][1] - rect["size"][1] // 2
+            rect_y = rect["center"][1] - rect["size"][1"] // 2
             pygame.draw.rect(screen, rect["color"], pygame.Rect(rect_x, rect_y, *rect["size"]))
 
         pygame.draw.circle(screen, "red", (player_x, player_y), 15)
@@ -216,46 +203,20 @@ while running:
         text = font.render(f"Points: {points}", True, (255, 255, 255))
         screen.blit(text, (247, 55))
 
-        time_text = font.render(f"{time_taken / 1000:.4f} s", True, (255, 255, 255))
-        screen.blit(time_text, (247, 550))
+        goal_text = font.render(f"Goal: {goal_points}", True, (255, 255, 255))
+        screen.blit(goal_text, (247, 90))
+
+        if points >= goal_points:  # Проверка достижения цели
+            isGameRunning = False
+            isGameOver = True
+
+    elif isGameOver:
+        game_over_text = font.render("You Win!", True, (255, 255, 255))
+        screen.blit(game_over_text, (250, 270))
 
         pygame.draw.rect(screen, "yellow", menu_button_rect)
         menu_text = font.render("Menu", True, "black")
         screen.blit(menu_text, (20, 16))
-
-        goal_text = font.render(f"Goal: {goal_points}", True, (255, 255, 255))
-        screen.blit(goal_text, (247, 90))
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_r]:
-            player_x, player_y = 300, 300
-        if not waiting:
-            if keys[pygame.K_w] or keys[pygame.K_UP]:
-                player_x, player_y = 300, 150
-            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-                player_x, player_y = 300, 450
-            if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-                player_x, player_y = 150, 300
-            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-                player_x, player_y = 450, 300
-
-        if keys[pygame.K_SPACE] and active_rect_index != -1:
-            active_rect = rects[active_rect_index]
-            if (player_x, player_y) == active_rect["center"]:
-                if active_rect["color"] == "green":
-                    points += 1
-                elif active_rect["color"] == "red":
-                    points -= 2
-                time_taken = pygame.time.get_ticks() - start_time
-            else:
-                points -= 1
-
-            player_x, player_y = 300, 300
-            active_rect_index = -1
-            for rect in rects:
-                rect["color"] = "yellow"
-            waiting = True
-            wait_start_time = time.time()
 
     pygame.display.flip()
     clock.tick(60)
