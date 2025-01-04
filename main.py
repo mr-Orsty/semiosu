@@ -40,7 +40,7 @@ menu_button_rect = pygame.Rect(10, 10, 85, 35)
 start_button_rect = pygame.Rect(240, 200, 130, 45)
 settings_button_rect = pygame.Rect(240, 260, 130, 45)
 exit_button_rect = pygame.Rect(240, 320, 130, 45)
-back_button_rect = pygame.Rect(240, 320, 130, 45)
+back_button_rect = pygame.Rect(240, 380, 130, 45)
 
 # Difficulty buttons
 easy_button_rect = pygame.Rect(240, 200, 130, 45)
@@ -60,6 +60,8 @@ pygame.mixer.music.set_volume(music_volume)
 
 # Goal value based on difficulty
 goal_points = 10
+rectangle_delay = 2  # Время, через которое появляется зеленый прямоугольник (в секундах)
+hit_wait_time = 1  # Время ожидания нажатия на прямоугольник (в секундах)
 
 # Function to reset game state
 def reset_game():
@@ -98,22 +100,34 @@ while running:
                 elif exit_button_rect.collidepoint(event.pos):
                     running = False
 
-            elif isDifficultyOpen:  # Handle difficulty selection
+            elif isDifficultyOpen:
                 if easy_button_rect.collidepoint(event.pos):
                     goal_points = 10
+                    rectangle_delay = 2.4  # Устанавливаем стандартное значение для легкого уровня
+                    hit_wait_time = 1.4  # Устанавливаем стандартное значение для легкого уровня
                     isDifficultyOpen = False
                     isGameRunning = True  # Start the game
                     reset_game()
+
                 elif medium_button_rect.collidepoint(event.pos):
                     goal_points = 50
+                    rectangle_delay = 1.5  # Для среднего уровня
+                    hit_wait_time = 1  # Для среднего уровня
                     isDifficultyOpen = False
                     isGameRunning = True
                     reset_game()
+
                 elif hard_button_rect.collidepoint(event.pos):
                     goal_points = 100
+                    rectangle_delay = 0.8  # Для сложного уровня (по аналогии)
+                    hit_wait_time = 0.5  # Для сложного уровня (по аналогии)
                     isDifficultyOpen = False
                     isGameRunning = True
                     reset_game()
+
+                elif back_button_rect.collidepoint(event.pos):
+                    isDifficultyOpen = False
+                    isMenuOpen = True
 
             elif isSettingsOpen:
                 if back_button_rect.collidepoint(event.pos):
@@ -125,6 +139,29 @@ while running:
                     slider_pos = max(0, min(200, event.pos[0] - volume_slider_rect.x))
                     music_volume = slider_pos / 200
                     pygame.mixer.music.set_volume(music_volume)
+
+            elif isGameRunning:
+                if menu_button_rect.collidepoint(event.pos):
+                    isGameRunning = False
+                    isMenuOpen = True
+
+                if active_rect_index != -1:
+                    active_rect = rects[active_rect_index]
+                    if (player_x, player_y) == active_rect["center"]:
+                        if active_rect["color"] == "green":
+                            points += 1
+                        elif active_rect["color"] == "red":
+                            points -= 2
+                        time_taken = pygame.time.get_ticks() - start_time
+                    else:
+                        points -= 1
+
+                    player_x, player_y = 300, 300
+                    active_rect_index = -1
+                    for rect in rects:
+                        rect["color"] = "yellow"
+                    waiting = True
+                    wait_start_time = time.time()
 
             elif volume_slider_rect.collidepoint(event.pos):
                 if is_dragging:
@@ -142,6 +179,13 @@ while running:
                 pygame.mixer.music.set_volume(music_volume)
 
     screen.fill("purple")
+
+    # Check if points have reached the goal here (outside event handling)
+    if isGameRunning and points >= goal_points:
+        print(f"Goal reached. Points: {points}, Goal: {goal_points}")  # Debug message
+        isGameRunning = False
+        isDifficultyOpen = True
+        reset_game()
 
     if isMenuOpen:
         pygame.draw.rect(screen, "yellow", start_button_rect)
@@ -169,10 +213,14 @@ while running:
         hard_text = font.render("Hard", True, "black")
         screen.blit(hard_text, (278, 331))
 
+        pygame.draw.rect(screen, "yellow", back_button_rect)
+        back_text = font.render("Back", True, "black")
+        screen.blit(back_text, (278, 391))
+
     elif isSettingsOpen:
         pygame.draw.rect(screen, "yellow", back_button_rect)
         back_text = font.render("Back", True, "black")
-        screen.blit(back_text, (255, 331))
+        screen.blit(back_text, (255, 391))
 
         settings_title = font.render("Settings", True, "white")
         screen.blit(settings_title, (253, 210))
@@ -186,7 +234,7 @@ while running:
     elif isGameRunning:
         current_time = time.time()
 
-        if active_rect_index != -1 and current_time - last_switch_time >= 2:
+        if active_rect_index != -1 and current_time - last_switch_time >= rectangle_delay:
             if rects[active_rect_index]["color"] == "green":
                 points -= 1
             elif rects[active_rect_index]["color"] == "red":
@@ -197,13 +245,15 @@ while running:
             waiting = True
             wait_start_time = current_time
 
+            player_x, player_y = 300, 300
+
         if active_rect_index == -1 and not waiting:
             active_rect_index = random.randint(0, len(rects) - 1)
-            rects[active_rect_index]["color"] = "red" if random.random() < 0.2 else "green"
+            rects[active_rect_index]["color"] = "red" if random.random() < 0.1 else "green"
             last_switch_time = current_time
             start_time = pygame.time.get_ticks()
 
-        if waiting and current_time - wait_start_time >= 2:
+        if waiting and current_time - wait_start_time >= hit_wait_time:
             waiting = False
 
         for rect in rects:
@@ -214,7 +264,7 @@ while running:
         pygame.draw.circle(screen, "red", (player_x, player_y), 15)
 
         text = font.render(f"Points: {points}", True, (255, 255, 255))
-        screen.blit(text, (247, 55))
+        screen.blit(text, (247, 47))
 
         time_text = font.render(f"{time_taken / 1000:.4f} s", True, (255, 255, 255))
         screen.blit(time_text, (247, 550))
@@ -224,7 +274,7 @@ while running:
         screen.blit(menu_text, (20, 16))
 
         goal_text = font.render(f"Goal: {goal_points}", True, (255, 255, 255))
-        screen.blit(goal_text, (247, 90))
+        screen.blit(goal_text, (250, 75))
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
