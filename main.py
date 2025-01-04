@@ -14,6 +14,7 @@ font = pygame.font.Font(None, 36)
 
 # Game state variables
 points = 0
+misses = 0  # Misses counter
 time_taken = 0
 waiting = True
 wait_start_time = time.time()
@@ -65,8 +66,9 @@ hit_wait_time = 1  # Время ожидания нажатия на прямо�
 
 # Function to reset game state
 def reset_game():
-    global points, time_taken, waiting, wait_start_time, player_x, player_y, rects, active_rect_index, last_switch_time, start_time, goal_points
+    global points, misses, time_taken, waiting, wait_start_time, player_x, player_y, rects, active_rect_index, last_switch_time, start_time, goal_points
     points = 0
+    misses = 0  # Reset misses
     time_taken = 0
     waiting = True
     wait_start_time = time.time()
@@ -152,9 +154,8 @@ while running:
                             points += 1
                         elif active_rect["color"] == "red":
                             points -= 2
-                        time_taken = pygame.time.get_ticks() - start_time
                     else:
-                        points -= 1
+                        misses += 1  # Increment misses if the player missed the correct rectangle
 
                     player_x, player_y = 300, 300
                     active_rect_index = -1
@@ -236,9 +237,9 @@ while running:
 
         if active_rect_index != -1 and current_time - last_switch_time >= rectangle_delay:
             if rects[active_rect_index]["color"] == "green":
-                points -= 1
+                misses += 1  # Player missed the green rectangle
             elif rects[active_rect_index]["color"] == "red":
-                points += 1
+                points -= 2  # Deduct points for pressing the wrong color
 
             rects[active_rect_index]["color"] = "yellow"
             active_rect_index = -1
@@ -269,6 +270,10 @@ while running:
         time_text = font.render(f"{time_taken / 1000:.4f} s", True, (255, 255, 255))
         screen.blit(time_text, (247, 550))
 
+        # Display Misses counter in the top-right corner
+        misses_text = font.render(f"Misses: {misses}", True, (255, 255, 255))
+        screen.blit(misses_text, (400, 47))
+
         pygame.draw.rect(screen, "yellow", menu_button_rect)
         menu_text = font.render("Menu", True, "black")
         screen.blit(menu_text, (20, 16))
@@ -296,9 +301,8 @@ while running:
                     points += 1
                 elif active_rect["color"] == "red":
                     points -= 2
-                time_taken = pygame.time.get_ticks() - start_time
             else:
-                points -= 1
+                misses += 1
 
             player_x, player_y = 300, 300
             active_rect_index = -1
